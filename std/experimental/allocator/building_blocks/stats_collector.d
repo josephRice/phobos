@@ -309,6 +309,7 @@ public:
         Ternary owns(void[] b)
         { return ownsImpl(b); }
         else
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         Ternary owns(string f = __FILE__, uint n = __LINE__)(void[] b)
         { return ownsImpl!(f, n)(b); }
     }
@@ -335,14 +336,15 @@ public:
     }
     else
     {
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         void[] allocate(string f = __FILE__, ulong n = __LINE__)
             (size_t bytes)
         { return allocateImpl!(f, n)(bytes); }
     }
 
-    private void[] allocateImpl(string f = null, ulong n = 0)(size_t bytes)
-    {
-        auto result = parent.allocate(bytes);
+    // Common code currently shared between allocateImpl and allocateZeroedImpl.
+    private enum _updateStatsForAllocateResult =
+    q{
         add!"bytesUsed"(result.length);
         add!"bytesAllocated"(result.length);
         immutable slack = this.goodAllocSize(result.length) - result.length;
@@ -351,7 +353,41 @@ public:
         add!"numAllocateOK"(result.length == bytes); // allocating 0 bytes is OK
         addPerCall!(f, n, "numAllocate", "numAllocateOK", "bytesAllocated")
             (1, result.length == bytes, result.length);
+    };
+
+    private void[] allocateImpl(string f = null, ulong n = 0)(size_t bytes)
+    {
+        auto result = parent.allocate(bytes);
+        mixin(_updateStatsForAllocateResult);
         return result;
+    }
+
+    static if (hasMember!(Allocator, "allocateZeroed"))
+    {
+        static if (!(perCallFlags
+            & (Options.numAllocate | Options.numAllocateOK
+                | Options.bytesAllocated)))
+        {
+            package(std) void[] allocateZeroed()(size_t n)
+            { return allocateZeroedImpl(n); }
+        }
+        else
+        {
+            pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
+            package(std) void[] allocateZeroed(string f = __FILE__, ulong n = __LINE__)
+                (size_t bytes)
+            { return allocateZeroedImpl!(f, n)(bytes); }
+        }
+
+        private void[] allocateZeroedImpl(string f = null, ulong n = 0)(size_t bytes)
+        {
+            auto result = parent.allocateZeroed(bytes);
+            // Note: calls to `allocateZeroed` are counted for statistical purposes
+            // as if they were calls to `allocate`. If/when `allocateZeroed` is made
+            // public it might be of interest to count such calls separately.
+            mixin(_updateStatsForAllocateResult);
+            return result;
+        }
     }
 
     /**
@@ -369,6 +405,7 @@ public:
     }
     else
     {
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         void[] alignedAllocate(string f = __FILE__, ulong n = __LINE__)
             (size_t bytes, uint a)
         { return alignedAllocateImpl!(f, n)(bytes, a); }
@@ -413,6 +450,7 @@ public:
     }
     else
     {
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         bool expand(string f = __FILE__, uint n = __LINE__)
             (ref void[] b, size_t delta)
         { return expandImpl!(f, n)(b, delta); }
@@ -468,6 +506,7 @@ public:
     }
     else
     {
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         bool reallocate(string f = __FILE__, ulong n = __LINE__)
             (ref void[] b, size_t s)
         { return reallocateImpl!(f, n)(b, s); }
@@ -538,6 +577,7 @@ public:
         bool deallocate(void[] b)
         { return deallocateImpl(b); }
     else
+        pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
         bool deallocate(string f = __FILE__, uint n = __LINE__)(void[] b)
         { return deallocateImpl!(f, n)(b); }
 
@@ -563,6 +603,7 @@ public:
             bool deallocateAll()
             { return deallocateAllImpl(); }
         else
+            pragma(inline, true) // LDC: Must inline because of __FILE__ as template parameter
             bool deallocateAll(string f = __FILE__, uint n = __LINE__)()
             { return deallocateAllImpl!(f, n)(); }
 
