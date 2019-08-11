@@ -69,6 +69,11 @@ else version (CRuntime_UClibc)
     version = GCC_IO;
     version = HAS_GETDELIM;
 }
+else version (WebAssembly)
+{
+    version = GENERIC_IO;
+    version = HAS_GETDELIM;
+}
 
 version (OSX)
 {
@@ -102,6 +107,10 @@ version (Windows)
     private alias FSChar = wchar;
 }
 else version (Posix)
+{
+    private alias FSChar = char;
+}
+else version (WebAssembly)
 {
     private alias FSChar = char;
 }
