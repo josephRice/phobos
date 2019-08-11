@@ -200,6 +200,11 @@ else version (X86)
     private alias haveSSE = core.cpuid.sse;
 }
 
+version(X86_Any)       version = IeeeFlagsSupport;
+else version(PPC_Any)  version = IeeeFlagsSupport;
+else version(MIPS_Any) version = IeeeFlagsSupport;
+else version(ARM_Any)  version = IeeeFlagsSupport;
+
 version (unittest) private
 {
     static if (real.sizeof > double.sizeof)
@@ -3838,9 +3843,18 @@ if (isIntegral!T && isSigned!T)
 /**
 Special return values of $(LREF ilogb).
  */
-alias FP_ILOGB0   = core.stdc.math.FP_ILOGB0;
-/// ditto
-alias FP_ILOGBNAN = core.stdc.math.FP_ILOGBNAN;
+version (WebAssembly)
+{
+    enum FP_ILOGB0   = int.min;
+    /// ditto
+    enum FP_ILOGBNAN = int.min;
+}
+else
+{
+    alias FP_ILOGB0   = core.stdc.math.FP_ILOGB0;
+    /// ditto
+    alias FP_ILOGBNAN = core.stdc.math.FP_ILOGBNAN;
+}
 
 ///
 @safe pure unittest
@@ -5332,13 +5346,13 @@ float rint(float x) @safe pure nothrow @nogc { return rint(cast(real) x); }
 ///
 @safe unittest
 {
-    resetIeeeFlags();
+    version (IeeeFlagsSupport) resetIeeeFlags();
     assert(rint(0.4) == 0);
     version (LDC)
     {
         // inexact bit not set with enabled optimizations
     }
-    else
+    else version (IeeeFlagsSupport)
         assert(ieeeFlags.inexact);
 
     assert(rint(0.5) == 0);
@@ -5781,6 +5795,9 @@ real remquo(real x, real y, out int n) @trusted nothrow @nogc  /// ditto
     }
 }
 
+version (IeeeFlagsSupport)
+{
+
 /** IEEE exception status flags ('sticky bits')
 
  These flags indicate that an exceptional floating-point condition has occurred.
@@ -6181,6 +6198,11 @@ void resetIeeeFlags() @trusted nothrow @nogc
     assert(isNaN(a));
     assert(ieeeFlags.invalid);
 }
+
+} // IeeeFlagsSupport
+
+version (D_HardFloat)
+{
 
 /** Control the Floating point hardware
 
@@ -6864,6 +6886,8 @@ version (D_HardFloat) @safe unittest // rounding
         assert(z == u);
     }}
 }
+
+} // D_HardFloat
 
 
 /*********************************

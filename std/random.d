@@ -2428,7 +2428,7 @@ do
         immutable T u = (rng.front - rng.min) * factor;
         rng.popFront();
 
-        static if (isIntegral!R && T.mant_dig >= (8 * R.sizeof))
+        static if (isIntegral!R && T.mant_dig >= 8 * R.sizeof)
         {
             /* If RNG variates are integral and T has enough precision to hold
              * R without loss, we're guaranteed by the definition of factor

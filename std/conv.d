@@ -3002,6 +3002,8 @@ if (isInputRange!Source && isSomeChar!(ElementType!Source) && !is(Source == enum
             u++;
         }
     }
+  L6: // if overflow occurred
+    enforce(ldval != real.infinity, new ConvException("Range error"));
 
     // if overflow occurred
     enforce(ldval != real.infinity, new ConvException("Range error"));
